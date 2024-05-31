@@ -14,6 +14,8 @@ game_duration = 30  # Продолжительность игры в секун�
 # Определение цветов
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
+GRAY = (100, 100, 100)
+BLUE = (0, 0, 255)
 color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
 
 # Размеры экрана
@@ -41,50 +43,80 @@ target_height = target_image.get_height()
 target_x = random.randint(0, SCREEN_WIDTH - target_width)
 target_y = random.randint(0, SCREEN_HEIGHT - target_height)
 
+# Начальный экран
+start_image = pygame.image.load("img/game.jpg")
+
+# Функция для отрисовки начального экрана
+def show_start_screen():
+    screen.blit(start_image, (0,0))
+    title_text = font.render("Добро пожаловать в игру Тир!", True, WHITE)
+    title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 100))
+    start_button_text = font.render("Старт", True, WHITE)
+    start_button_rect = start_button_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 100))
+    pygame.draw.rect(screen, BLUE, start_button_rect.inflate(20, 20))
+    screen.blit(title_text, title_rect)
+    screen.blit(start_button_text, start_button_rect)
+    pygame.display.update()
+    return start_button_rect
+
+
 # Главный игровой цикл
 running = True
+game_started = False
+
 while running:
-    # Заполнение экрана случайным цветом
-    screen.fill(color)
-    current_time = time.time()
-    elapsed_time = current_time - start_time
+    if not game_started:
+        start_button_rect = show_start_screen()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_x, mouse_y = pygame.mouse.get_pos()
+                if start_button_rect.collidepoint(mouse_x, mouse_y):
+                    game_started = True
+                    start_time = time.time()  # Сброс таймера при старте игры
+    else:
+        # Заполнение экрана случайным цветом
+        screen.fill(color)
+        current_time = time.time()
+        elapsed_time = current_time - start_time
 
-    # Обработка событий
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
+        # Обработка событий
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                # Воспроизведение звука пули
+                bullet_sound.play()
+                mouse_x, mouse_y = pygame.mouse.get_pos()
+                # Проверка попадания по цели
+                if target_x < mouse_x < target_x + target_width and target_y < mouse_y < target_y + target_height:
+                    # Перемещение цели в случайное положение
+                    target_x = random.randint(0, SCREEN_WIDTH - target_width)
+                    target_y = random.randint(0, SCREEN_HEIGHT - target_height)
+                    # Воспроизведение звука попадания
+                    hit_sound.play()
+                    # Увеличение счета
+                    score += 1
+                    # Уменьшение размера цели для увеличения сложности
+                    if target_width > 20:
+                        target_width -= 2
+                        target_height -= 2
+                        target_image = pygame.transform.smoothscale(original_target_image, (target_width, target_height))
+
+        # Отображение счета и таймера
+        score_text = font.render(f"Score: {score}", True, WHITE)
+        screen.blit(score_text, (10, 10))
+        time_left = max(0, int(game_duration - elapsed_time))
+        timer_text = font.render(f"Time: {time_left}", True, WHITE)
+        screen.blit(timer_text, (SCREEN_WIDTH - 120, 10))
+        # Отображение цели
+        screen.blit(target_image, (target_x, target_y))
+        pygame.display.update()
+
+        # Проверка окончания времени игры
+        if elapsed_time > game_duration:
             running = False
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            # Воспроизведение звука пули
-            bullet_sound.play()
-            mouse_x, mouse_y = pygame.mouse.get_pos()
-            # Проверка попадания по цели
-            if target_x < mouse_x < target_x + target_width and target_y < mouse_y < target_y + target_height:
-                # Перемещение цели в случайное положение
-                target_x = random.randint(0, SCREEN_WIDTH - target_width)
-                target_y = random.randint(0, SCREEN_HEIGHT - target_height)
-                # Воспроизведение звука попадания
-                hit_sound.play()
-                # Увеличение счета
-                score += 1
-                # Уменьшение размера цели для увеличения сложности
-                if target_width > 20:
-                    target_width -= 2
-                    target_height -= 2
-                    target_image = pygame.transform.smoothscale(original_target_image, (target_width, target_height))
-
-    # Отображение счета и таймера
-    score_text = font.render(f"Score: {score}", True, WHITE)
-    screen.blit(score_text, (10, 10))
-    time_left = max(0, int(game_duration - elapsed_time))
-    timer_text = font.render(f"Time: {time_left}", True, WHITE)
-    screen.blit(timer_text, (SCREEN_WIDTH - 120, 10))
-    # Отображение цели
-    screen.blit(target_image, (target_x, target_y))
-    pygame.display.update()
-
-    # Проверка окончания времени игры
-    if elapsed_time > game_duration:
-        running = False
 
 # Экран окончания игры
 screen.fill(BLACK)
